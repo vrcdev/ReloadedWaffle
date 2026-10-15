@@ -668,69 +668,9 @@ run.RenderStepped:Connect(function()
 	end
 end)
 
-local curTarget = nil
-local function redirectTarget()
-	return curTarget
-end
-
-task.spawn(function()
-	while not FL_DEAD do
-		local ok, t = pcall(getTarget)
-		curTarget = ok and t or nil
-		task.wait(0.1)
-	end
-	curTarget = nil
-end)
-
-local silentOn = function() return not FL_DEAD and flag("silent_aim", true) and flag("aim_enable", true) end
-
-local oldNamecall
-oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
-	local method = getnamecallmethod()
-	if silentOn() and not checkcaller() then
-		if method == "Raycast" and self == ws then
-			local args = {...}
-			local origin, dir = args[1], args[2]
-			if typeof(origin) == "Vector3" and typeof(dir) == "Vector3" then
-				local t = redirectTarget()
-				if t then
-					args[2] = (t.Position - origin)
-					return oldNamecall(self, unpack(args))
-				end
-			end
-		elseif method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRay"
-			or method == "FindPartOnRayWithWhitelist" or method == "FindPartOnRayWithIgnoreListAndFilter" then
-			local args = {...}
-			local ray = args[1]
-			if typeof(ray) == "Ray" then
-				local t = redirectTarget()
-				if t then
-					args[1] = Ray.new(ray.Origin, t.Position - ray.Origin)
-					return oldNamecall(self, unpack(args))
-				end
-			end
-		end
-	end
-	return oldNamecall(self, ...)
-end))
-
-local oldIndex
-oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, k)
-	if not checkcaller() and silentOn() then
-		if (k == "Hit" or k == "Target") and self:IsA("Mouse") and aimHeld() then
-			local t = redirectTarget()
-			if t then
-				if k == "Hit" then return t.CFrame end
-				return t
-			end
-		end
-	end
-	return oldIndex(self, k)
-end))
 
 
-
-
+local silentOn = function() return false end
 
 UI:Init("waffle // reloaded")
 pcall(function() UI.sg.Enabled = false end)
@@ -761,7 +701,7 @@ UI.CBS.col_enemy = function(v) colEnemy = v end
 UI.CBS.col_friend = function(v) colFriend = v end
 
 local Combat = UI:Category("combat")
-local mAim = Combat:Module("silent aim", "silent_aim", true)
+local mAim = Combat:Module("aimbot", "aim_enable", true)
 mAim:Toggle("enabled", "aim_enable", true)
 mAim:Bind("aim key", "aim_bind", "MouseButton2")
 mAim:Slider("fov", "aim_fov", 40, 700, 220, 10)
