@@ -668,14 +668,19 @@ run.RenderStepped:Connect(function()
 	end
 end)
 
-local curTarget, curTargetAt = nil, 0
+local curTarget = nil
 local function redirectTarget()
-	if not curTarget or not curTarget.Parent or os.clock() - curTargetAt > 0.1 then
-		curTarget = getTarget()
-		curTargetAt = os.clock()
-	end
 	return curTarget
 end
+
+task.spawn(function()
+	while not FL_DEAD do
+		local ok, t = pcall(getTarget)
+		curTarget = ok and t or nil
+		task.wait(0.1)
+	end
+	curTarget = nil
+end)
 
 local silentOn = function() return not FL_DEAD and flag("silent_aim", true) and flag("aim_enable", true) end
 
@@ -712,7 +717,7 @@ end))
 local oldIndex
 oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, k)
 	if not checkcaller() and silentOn() then
-		if self:IsA("Mouse") and (k == "Hit" or k == "Target") then
+		if (k == "Hit" or k == "Target") and self:IsA("Mouse") and aimHeld() then
 			local t = redirectTarget()
 			if t then
 				if k == "Hit" then return t.CFrame end
